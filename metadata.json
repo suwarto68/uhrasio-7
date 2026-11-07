@@ -1,0 +1,6 @@
+{
+  "name": "LMS & CBT ANBK SMPN 1 Wanaraya - Bab 3: Rasio",
+  "description": "Aplikasi LMS dan Ujian Online Formatif Bab 3 Rasio Kelas 7 SMP Negeri 1 Wanaraya TA 2026/2027 Berdasarkan Kerangka Asesmen TKA Puspendik dengan Integrasi Google Spreadsheet",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
