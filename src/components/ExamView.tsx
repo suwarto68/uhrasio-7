@@ -9,7 +9,7 @@ import {
   ExamSubmission, 
   AppSettings 
 } from '../types';
-import { QUESTIONS_DATA } from '../data/questionsData';
+import { getQuestionsByPacket } from '../data/questionsData';
 import { submitExamToSpreadsheet } from '../services/apiService';
 import { QuestionStimulusVisual } from './QuestionStimulusVisual';
 import { 
@@ -49,23 +49,81 @@ export const ExamView: React.FC<ExamViewProps> = ({
   onExamComplete,
   onBackToHome
 }) => {
-  // Soal Acak untuk setiap siswa: acak urutan berdasarkan seed username
-  const shuffledQuestions = useMemo(() => {
-    const list = [...QUESTIONS_DATA];
-    // Deterministic shuffle per student so it stays consistent during their session
-    let seed = 0;
-    for (let i = 0; i < currentUser.username.length; i++) {
-      seed = (seed * 31 + currentUser.username.charCodeAt(i)) % 10007;
-    }
-    for (let i = list.length - 1; i > 0; i--) {
-      seed = (seed * 9301 + 49297) % 233280;
-      const j = Math.floor((seed / 233280) * (i + 1));
-      [list[i], list[j]] = [list[j], list[i]];
-    }
-    return list;
-  }, [currentUser.username]);
+  const activePacket = settings.activeQuestionPacket || 'paket_b';
 
-  const sessionKey = `cbt_session_${currentUser.username}`;
+  // Soal & Kunci Jawaban Acak per siswa secara deterministik berdasarkan username + paket aktif
+  const shuffledQuestions = useMemo(() => {
+    const baseQuestions = getQuestionsByPacket(activePacket);
+    const seedStr = `${currentUser.username}_${activePacket}`;
+    let seed = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      seed = (seed * 31 + seedStr.charCodeAt(i)) % 10007;
+    }
+    const nextRand = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+
+    const shuffleArray = <T,>(arr: T[]): T[] => {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(nextRand() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
+
+    const orderedQuestions = shuffleArray(baseQuestions);
+    const labels = ['A', 'B', 'C', 'D'];
+
+    return orderedQuestions.map((q) => {
+      if (q.type === 'pg') {
+        const hasLabelRef = q.options.some((opt) => /\([A-D]\)/.test(opt.text));
+        if (hasLabelRef) {
+          return q;
+        }
+        const shuffledOpts = shuffleArray(q.options);
+        const newOptions = shuffledOpts.map((opt, idx) => ({
+          label: labels[idx],
+          text: opt.text
+        }));
+        const correctOrigIdx = shuffledOpts.findIndex((opt) => opt.label === q.correctAnswer);
+        return {
+          ...q,
+          options: newOptions,
+          correctAnswer: correctOrigIdx >= 0 ? labels[correctOrigIdx] : q.correctAnswer
+        };
+      }
+
+      if (q.type === 'pgk_mcma') {
+        const shuffledOpts = shuffleArray(q.options);
+        const newOptions = shuffledOpts.map((opt, idx) => ({
+          id: labels[idx],
+          text: opt.text
+        }));
+        const newCorrectAnswers = shuffledOpts
+          .map((opt, idx) => (q.correctAnswers.includes(opt.id) ? labels[idx] : null))
+          .filter((val): val is string => val !== null)
+          .sort();
+        return {
+          ...q,
+          options: newOptions,
+          correctAnswers: newCorrectAnswers
+        };
+      }
+
+      if (q.type === 'pgk_kategori') {
+        return {
+          ...q,
+          statements: shuffleArray(q.statements)
+        };
+      }
+
+      return q;
+    });
+  }, [currentUser.username, activePacket]);
+
+  const sessionKey = `cbt_session_${currentUser.username}_${activePacket}`;
 
   // Initial restoration from localStorage if available
   const initialSession = useMemo(() => {
@@ -611,6 +669,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   imageCaption={currentQuestion.stimulus.imageCaption}
                   diagramType={currentQuestion.stimulus.diagramType}
                   title={currentQuestion.stimulus.title}
+                  chartData={currentQuestion.stimulus.chartData}
                 />
               )}
 

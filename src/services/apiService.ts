@@ -9,7 +9,11 @@ export const getStoredSettings = (): AppSettings => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return {
+        ...parsed,
+        activeQuestionPacket: parsed.activeQuestionPacket || 'paket_b'
+      };
     }
   } catch (e) {
     console.warn('Gagal membaca settings dari local storage:', e);
@@ -23,7 +27,8 @@ export const getStoredSettings = (): AppSettings => {
     schoolName: 'SMP Negeri 1 Wanaraya',
     schoolYear: '2026/2027',
     examTitle: 'Ujian Formatif Bab 3: Rasio - Matematika Kelas 7',
-    adminPasswordHash: 'adminwanaraya2026'
+    adminPasswordHash: 'adminwanaraya2026',
+    activeQuestionPacket: 'paket_b'
   };
 };
 

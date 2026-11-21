@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StudentUser, ExamSubmission, AppSettings } from '../types';
-import { QUESTIONS_DATA } from '../data/questionsData';
+import { getQuestionsByPacket } from '../data/questionsData';
 import { 
   testGoogleAppsScriptConnection, 
   fetchUsersFromSpreadsheet,
@@ -56,15 +56,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isPembahasanUnlocked, setIsPembahasanUnlocked] = useState<boolean>(false);
   const [enteredPassword, setEnteredPassword] = useState<string>('');
   const [pembahasanError, setPembahasanError] = useState<string>('');
+  const [pembahasanPacketTab, setPembahasanPacketTab] = useState<'paket_a' | 'paket_b'>(
+    settings.activeQuestionPacket || 'paket_b'
+  );
 
   // Settings form states
   const [durationInput, setDurationInput] = useState<number>(settings.examDurationMinutes);
   const [tokenInput, setTokenInput] = useState<string>(settings.examToken);
+  const [activePacketInput, setActivePacketInput] = useState<'paket_a' | 'paket_b'>(
+    settings.activeQuestionPacket || 'paket_b'
+  );
   const [appsScriptUrlInput, setAppsScriptUrlInput] = useState<string>(settings.googleAppsScriptUrl);
   const [testResult, setTestResult] = useState<{ status: 'idle' | 'testing' | 'success' | 'error'; message: string }>({
     status: 'idle',
     message: ''
   });
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
 
   // Pull from spreadsheet state
   const [isPullingUsers, setIsPullingUsers] = useState<boolean>(false);
@@ -105,11 +112,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       ...settings,
       examDurationMinutes: Number(durationInput) || 80,
       examToken: tokenInput.trim().toUpperCase() || 'RASIO7WNR',
-      googleAppsScriptUrl: appsScriptUrlInput.trim()
+      googleAppsScriptUrl: appsScriptUrlInput.trim(),
+      activeQuestionPacket: activePacketInput
     };
     saveStoredSettings(updated);
     onUpdateSettings(updated);
-    alert('Pengaturan berhasil disimpan!');
+    setPembahasanPacketTab(activePacketInput);
+    setSaveSuccessMsg('Pengaturan & paket soal aktif berhasil disimpan!');
+    setTimeout(() => setSaveSuccessMsg(''), 4000);
   };
 
   // Handle Test Connection
@@ -616,6 +626,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <span className="text-[11px] text-slate-500 mt-1 block">Siswa wajib memasukkan token ini saat login CBT.</span>
             </div>
 
+            {/* Pilihan Paket Soal Ujian Aktif */}
+            <div className="md:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-xs font-bold text-slate-800">
+                  Paket Bank Soal Aktif untuk Ujian CBT Siswa
+                </label>
+                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  Opsi & Urutan Soal Juga Diacak Otomatis per Siswa
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActivePacketInput('paket_b')}
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
+                    activePacketInput === 'paket_b'
+                      ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-200'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900">Paket B (Soal Paralel Baru)</span>
+                    {activePacketInput === 'paket_b' && (
+                      <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">Aktif</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    20 soal baru setara TKA Bab 3 Rasio (10 PG, 4 PGK MCMA, 6 Benar/Salah) dengan variasi kunci jawaban acak.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActivePacketInput('paket_a')}
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
+                    activePacketInput === 'paket_a'
+                      ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-200'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900">Paket A (Bank Soal Awal)</span>
+                    {activePacketInput === 'paket_a' && (
+                      <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">Aktif</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    20 soal versi pertama Bab 3 Rasio dengan stimulus asli Wanaraya & Kalimantan Selatan.
+                  </p>
+                </button>
+              </div>
+            </div>
+
             {/* URL Google Apps Script Web App */}
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-1">
@@ -667,7 +730,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           </div>
 
-          <div className="pt-4 border-t border-slate-100 flex justify-end">
+          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-end gap-3">
+            {saveSuccessMsg && (
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                {saveSuccessMsg}
+              </span>
+            )}
             <button
               onClick={handleSaveSettings}
               className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold shadow-md transition-all"
@@ -730,7 +799,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           ) : (
             /* Isi Pembahasan 20 Soal Lengkap dengan Kisi-Kisi ABCD TKA */
             <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
                   <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-md border border-purple-200">
                     Akses Guru Pengajar Terbuka
@@ -743,17 +812,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </p>
                 </div>
 
-                <button
-                  onClick={() => setIsPembahasanUnlocked(false)}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
-                >
-                  Kunci Kembali
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setPembahasanPacketTab('paket_b')}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        pembahasanPacketTab === 'paket_b'
+                          ? 'bg-white text-blue-700 font-bold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Paket B (Paralel · Kunci Acak)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPembahasanPacketTab('paket_a')}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        pembahasanPacketTab === 'paket_a'
+                          ? 'bg-white text-blue-700 font-bold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Paket A (Awal)
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setIsPembahasanUnlocked(false)}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
+                  >
+                    Kunci Kembali
+                  </button>
+                </div>
               </div>
 
               {/* Rincian 20 Soal */}
               <div className="space-y-6">
-                {QUESTIONS_DATA.map((q) => (
+                {getQuestionsByPacket(pembahasanPacketTab).map((q) => (
                   <div key={q.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
                       <div className="flex items-center gap-2">
@@ -787,12 +883,76 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         imageCaption={q.stimulus.imageCaption}
                         diagramType={q.stimulus.diagramType}
                         title={q.stimulus.title}
+                        chartData={q.stimulus.chartData}
                       />
                     )}
+
+                    {/* Konteks Stimulus & Tabel */}
+                    <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 leading-relaxed">
+                      <strong className="text-slate-900 block mb-1">{q.stimulus.title}</strong>
+                      <p>{q.stimulus.context}</p>
+                    </div>
 
                     <p className="text-xs text-slate-800 font-bold">
                       {q.prompt}
                     </p>
+
+                    {/* Daftar Opsi / Pernyataan */}
+                    {q.type === 'pg' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                        {q.options.map((opt) => (
+                          <div
+                            key={opt.label}
+                            className={`px-3 py-1.5 rounded-lg border ${
+                              opt.label === q.correctAnswer
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
+                                : 'bg-white border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            <span className="font-mono font-bold mr-1.5">{opt.label}.</span>
+                            {opt.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {q.type === 'pgk_mcma' && (
+                      <div className="space-y-1.5 text-xs">
+                        {q.options.map((opt) => (
+                          <div
+                            key={opt.id}
+                            className={`px-3 py-1.5 rounded-lg border ${
+                              q.correctAnswers.includes(opt.id)
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
+                                : 'bg-white border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            <span className="font-mono font-bold mr-1.5">{opt.id}.</span>
+                            {opt.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {q.type === 'pgk_kategori' && (
+                      <div className="space-y-1.5 text-xs">
+                        {q.statements.map((st, idx) => (
+                          <div
+                            key={st.id}
+                            className="px-3 py-1.5 rounded-lg border bg-white border-slate-200 flex items-center justify-between gap-2"
+                          >
+                            <span className="text-slate-700">{idx + 1}. {st.statement}</span>
+                            <span className={`font-mono font-bold px-2 py-0.5 rounded shrink-0 ${
+                              st.correctAnswer === 'Benar'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              {st.correctAnswer}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Kunci Jawaban */}
                     <div className="flex items-center gap-2 text-xs">

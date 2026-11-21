@@ -1,4 +1,7 @@
 import { Question } from '../types';
+import { QUESTIONS_DATA_PAKET_B } from './questionsDataPaketB';
+
+export { QUESTIONS_DATA_PAKET_B };
 
 export const QUESTIONS_DATA: Question[] = [
   // ==========================================
@@ -790,3 +793,10 @@ export const QUESTIONS_DATA: Question[] = [
     explanation: 'Pembahasan:\nMisalkan harga 1 kg Jeruk Siam = x, maka harga 1 botol Madu = 4x.\nPersamaan linier: 6(x) + 3(4x) = 270.000 -> 6x + 12x = 270.000 -> 18x = 270.000 -> x = 15.000.\n- Harga 1 kg Jeruk Siam = x = Rp15.000 (Pernyataan 1 BENAR).\n- Harga 1 botol Madu = 4x = 4 × 15.000 = Rp60.000 (Pernyataan 2 BENAR).\n- Biaya 4 kg Jeruk + 2 botol Madu = (4 × 15.000) + (2 × 60.000) = 60.000 + 120.000 = Rp180.000, bukan Rp170.000 (Pernyataan 3 SALAH).'
   }
 ];
+
+export const getQuestionsByPacket = (packet?: 'paket_a' | 'paket_b'): Question[] => {
+  if (packet === 'paket_a') {
+    return QUESTIONS_DATA;
+  }
+  return QUESTIONS_DATA_PAKET_B;
+};

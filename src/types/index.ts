@@ -103,4 +103,5 @@ export interface AppSettings {
   schoolYear: string;
   examTitle: string;
   adminPasswordHash: string; // default stored
+  activeQuestionPacket?: 'paket_a' | 'paket_b';
 }
